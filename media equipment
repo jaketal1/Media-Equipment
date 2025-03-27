@@ -1,47 +1,396 @@
-from flask import Flask, request, render_template, redirect, url_for, session
-from flask_bcrypt import Bcrypt
-from flask_sqlalchemy import SQLAlchemy
+import bcrypt
+import sqlite3
+import csv
+from flask import Flask, render_template, request, redirect, url_for
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'  # Replace with a secure key
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'  # Use your preferred database
-db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
 
-# User model
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(150), nullable=False, unique=True)
-    password = db.Column(db.String(150), nullable=False)
+# Function to initialize the database and create 'users' table
+def init_db():
+    try:
+        conn = sqlite3.connect('users.db')  # Connect to the database
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                email TEXT UNIQUE,
+                password TEXT
+            )
+        ''')  # Create 'users' table
+        conn.commit()
+        print("Database initialized successfully!")
+    except sqlite3.Error as e:
+        print(f"Error initializing database: {e}")
+    finally:
+        conn.close()
 
-# Registration route
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+# Define routes for rendering HTML templates
+@app.route("/")
+def index():
+    return render_template('index.html')
 
-        user = User(email=email, password=hashed_password)
-        db.session.add(user)
-        db.session.commit()
-        return redirect(url_for('login'))
-    return render_template('register.html')
+@app.route('/installations')
+def installations():
+    return render_template('installations.html')
 
-# Login route
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/consultations')
+def consultations():
+    return render_template('consultations.html')
+
+@app.route('/signup')
+def signup():
+    return render_template('signup.html')
+
+@app.route('/login')
 def login():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        
-        user = User.query.filter_by(email=email).first()
-        if user and bcrypt.check_password_hash(user.password, password):
-            session['user_id'] = user.id
-            return "Login successful!"
-        return "Invalid credentials, try again."
     return render_template('login.html')
 
+@app.route("/carbonemission")
+def carbonemission():
+    return render_template('carbonemission.html')
+
+@app.route('/installationconfirmation')
+def installationconfirmation():
+    return render_template('installationconfirmation.html')
+
+@app.route('/consultationconfirmation')
+def consultationconfirmation():
+    return render_template('consultationconfirmation.html')
+
+@app.route('/loginconfirmation')
+def loginconfirmation():
+    return render_template('loginconfirmation.html')
+
+@app.route('/signupconfirmation')
+def signupconfirmation():
+    return render_template('signupconfirmation.html')
+
+# Signup functionality
+@app.route('/signup', methods=["POST"])
+def acc():
+    email = request.form.get("email")
+    password = request.form.get("password")
+
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    try:
+        c.execute('INSERT INTO users (email, password) VALUES (?, ?)', (email, hashed_password))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return "Email already exists. Please use a different one."
+    finally:
+        conn.close()
+
+    return redirect(url_for('signupconfirmation'))
+
+# Login functionality
+@app.route('/login', methods=["POST"])
+def log():
+    email = request.form.get("email")
+    password = request.form.get("password")
+
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('SELECT password FROM users WHERE email = ?', (email,))
+    user = c.fetchone()
+    conn.close()
+
+    if user and bcrypt.checkpw(password.encode('utf-8'), user[0].encode('utf-8')):
+        return "Login successful!"
+    return "Incorrect email or password. Please try again."
+
+# Consultations submission functionality
+@app.route("/consultations", methods=["POST"])
+def cons():
+    email = request.form.get("email")
+    password = request.form.get("password")
+    consultation = request.form.get("consultation")
+    date_of_consultation = request.form.get("date_of_consultation")
+
+    with open('consultations.csv', 'a', newline='') as csvfile:
+        fieldnames = ['email', 'password', 'consultation', 'date_of_consultation']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow({
+            'email': email,
+            'password': password,
+            'consultation': consultation,
+            'date_of_consultation': date_of_consultation
+        })
+
+    return render_template('consultationconfirmation.html', email=email, consultation=consultation, date_of_consultation=date_of_consultation)
+
+# Installations submission functionality
+@app.route("/installations", methods=["POST"])
+def inst():
+    email = request.form.get("email")
+    password = request.form.get("password")
+    installation = request.form.get("installation")
+    date_of_installation = request.form.get("date_of_installation")
+
+    with open('installations.csv', 'a', newline='') as csvfile:
+        fieldnames = ['email', 'password', 'installation', 'date_of_installation']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow({
+            'email': email,
+            'password': password,
+            'installation': installation,
+            'date_of_installation': date_of_installation
+        })
+
+    return render_template('installationconfirmation.html', email=email, installation=installation, date_of_installation=date_of_installation)
+
+# Main application entry point
 if __name__ == '__main__':
-    db.create_all()  # Ensure database is created
+    init_db()  # Initialize the database before starting the application
     app.run(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import bcrypt
+import sqlite3
+import csv
+from flask import Flask, render_template, request, redirect, url_for
+
+app = Flask(__name__)
+
+#routes to each html file
+
+def init_db():
+    try:
+        conn = sqlite3.connect('users.db')  # Attempt connection
+        print("Database connection successful!")  # Debug message
+    except sqlite3.Error as e:
+        print(f"Database connection failed: {e}")
+    finally:
+        conn.close()
+
+
+if __name__ == '__main__':
+    init_db()  # Create the table before starting the application
+    app.run(debug=True)
+
+
+@app.route("/")
+def index():
+    return render_template('index.html')
+
+@app.route('/installations')
+def installations():
+    return render_template('installations.html')
+
+@app.route('/consultations')
+def consultations():
+    return render_template('consultations.html')
+
+@app.route('/signup')
+def signup():
+    return render_template('signup.html')
+
+@app.route('/login')
+def login():
+    return render_template('login.html')
+
+@app.route("/carbonemission")
+def carbonemission():
+    return render_template('carbonemission.html')
+
+@app.route('/installationconfirmation')
+def installationconfirmation():
+    return render_template('installationconfirmation.html')
+
+
+@app.route('/consultationconfirmation')
+def consultationconfirmation():
+    return render_template('consultationconfirmation.html')
+
+@app.route('/loginconfirmation')
+def loginconfirmation():
+    return render_template('loginconfirmation.html')
+
+@app.route('/signupconfirmation')
+def signupconfirmation():
+    return render_template('signupconfirmation.html')
+
+
+
+
+# Create users table if it doesn't exist
+def init_db():
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            email TEXT UNIQUE,
+            password TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+@app.route('/signup', methods=["POST"])
+def acc():
+    email = request.form.get("email")
+    password = request.form.get("password")
+
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    try:
+        c.execute('INSERT INTO users (email, password) VALUES (?, ?)', (email, hashed_password))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return "Email already exists. Please use a different one."
+    finally:
+        conn.close()
+
+    return redirect(url_for('signupconfirmation'))
+
+@app.route('/login', methods=["POST"])
+def log():
+    email = request.form.get("email")
+    password = request.form.get("password")
+
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('SELECT password FROM users WHERE email = ?', (email,))
+    user = c.fetchone()
+    conn.close()
+
+    if user and bcrypt.checkpw(password.encode('utf-8'), user[0].encode('utf-8')):
+        return "Login successful!"
+    return "Incorrect email or password. Please try again."
+
+
+
+
+
+
+
+
+@app.route("/consultations", methods=["POST"])
+def cons():
+    email = request.form.get("email")
+    password = request.form.get("password")
+    consultation = request.form.get("consulation")
+    date_of_consultation = request.form.get("date_of_consultation")
+
+    with open('consultations.csv', 'a', newline='') as csvfile:
+        fieldnames = ['email', 'password', 'consultation', 'date_of_consultation']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow({
+            'email': email,
+            'password': password,
+            'consultation': consultation,
+            'date_of_consultation': date_of_consultation
+        })
+
+    return render_template('consultationconfirmation.html', email=email, consultation=consultation, date_of_installation=date_of_consultation)
+
+    
+
+
+
+@app.route("/installations", methods=["POST"])
+def inst():
+    email = request.form.get("email")
+    password = request.form.get("password")
+    installation = request.form.get("installation")
+    date_of_installation = request.form.get("date_of_installation")
+
+    with open('installations.csv', 'a', newline='') as csvfile:
+        fieldnames = ['email', 'password', 'installation', 'date_of_installation']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow({
+            'email': email,
+            'password': password,
+            'installation': installation,
+            'date_of_installation': date_of_installation
+        })
+        
+        return render_template('installationconfirmation.html', email=email, installation=installation, date_of_installation=date_of_installation)
+
+    #return redirect(url_for('installationconfirmation'))
+
+
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+def calculate_carbon_footprint():
+    print("Welcome to the Carbon Footprint Calculator!")
+    print("Please provide the following information:")
+
+    # Transportation
+    car_miles = float(input("How many miles do you drive in a car per year? "))
+    fuel_efficiency = float(input("What is your car's fuel efficiency (miles per gallon)? "))
+    car_emissions = (car_miles / fuel_efficiency) * 19.6  # lbs CO2 per gallon of gasoline
+    car_emissions_kg = car_emissions * 0.453592  # Convert to kilograms
+
+    # Energy use
+    electricity_usage = float(input("How many kilowatt-hours (kWh) of electricity do you use per month? "))
+    electricity_emissions = electricity_usage * 0.92  # Approx. kg CO2 per kWh (varies by location)
+
+    # Waste
+    waste_amount = float(input("How many pounds of waste do you generate per week? "))
+    waste_emissions = waste_amount * 52 * 1.29  # 1.29 lbs CO2 per pound of waste annually
+    waste_emissions_kg = waste_emissions * 0.453592  # Convert to kilograms
+
+    # Food
+    print("\nChoose your primary diet type:")
+    print("1. Vegetarian")
+    print("2. Pescatarian")
+    print("3. Omnivorous (includes meat)")
+    print("4. Vegan")
+
+    diet_choice = int(input("Enter the number corresponding to your diet type: "))
+    if diet_choice == 1:
+        food_emissions = 1500  # Annual kg CO2eq for a vegetarian diet
+    elif diet_choice == 2:
+        food_emissions = 2000  # Annual kg CO2eq for a pescatarian diet
+    elif diet_choice == 3:
+        food_emissions = 3000  # Annual kg CO2eq for an omnivorous diet
+    elif diet_choice == 4:
+        food_emissions = 1000  # Annual kg CO2eq for a vegan diet
+    else:
+        print("Invalid choice! Assuming an omnivorous diet by default.")
+        food_emissions = 3000
+
+    # Total emissions
+    total_emissions = (
+        car_emissions_kg
+        + (electricity_emissions * 12)
+        + waste_emissions_kg
+        + food_emissions
+    )
+    print(f"\nYour estimated annual carbon footprint is approximately {total_emissions:.2f} kg of CO2.")
+
+# Run the calculator
+calculate_carbon_footprint()
+
+
