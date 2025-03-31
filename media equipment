@@ -501,3 +501,78 @@ def cons():
 
 return render_template('installationconfirmation.html', email=email, installation=installation, date_of_installation=date_of_installation)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fuel and Electricity Calculator</title>
+</head>
+<body>
+    <h1>Fuel and Electricity Calculator</h1>
+    <form id="calculatorForm">
+        <label for="car_miles">Miles driven per year:</label>
+        <input type="number" id="car_miles" name="car_miles" required><br>
+
+        <label for="fuel_efficiency">Fuel efficiency (mpg):</label>
+        <input type="number" id="fuel_efficiency" name="fuel_efficiency" required><br>
+
+        <label for="electricity_usage">Electricity usage (kWh per month):</label>
+        <input type="number" id="electricity_usage" name="electricity_usage" required><br>
+
+        <button type="button" onclick="calculate()">Calculate</button>
+    </form>
+
+    <h2>Results:</h2>
+    <p id="fuelResult"></p>
+    <p id="electricityResult"></p>
+
+    <script>
+        function calculate() {
+            // Get user input
+            const carMiles = parseFloat(document.getElementById("car_miles").value);
+            const fuelEfficiency = parseFloat(document.getElementById("fuel_efficiency").value);
+            const electricityUsage = parseFloat(document.getElementById("electricity_usage").value);
+
+            // Perform calculations
+            const yearlyFuelUsed = carMiles / fuelEfficiency; // gallons per year
+            const yearlyElectricityUsage = electricityUsage * 12; // kWh per year
+
+            // Display results
+            document.getElementById("fuelResult").textContent = `Yearly fuel used: ${yearlyFuelUsed.toFixed(2)} gallons`;
+            document.getElementById("electricityResult").textContent = `Yearly electricity usage: ${yearlyElectricityUsage.toFixed(2)} kWh`;
+        }
+    </script>
+</body>
+</html>
