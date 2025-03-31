@@ -431,49 +431,70 @@ calculate_carbon_footprint()
 
 
 
+from flask import Flask, request, jsonify
+import sqlite3
+import bcrypt
+import logging
+
+app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
 @app.route("/consultations", methods=["POST"])
 def cons():
-    email = request.form.get("email")
-    password = request.form.get("password")
-    consultation = request.form.get("consultation")
-    date_of_consultation = request.form.get("date_of_consultation")
-
-    # Validate input fields
-    if not (email and password and consultation and date_of_consultation):
-        return "All fields are required!", 400  # Bad Request
-
     try:
+        # Get form data
+        email = request.form.get("email")
+        password = request.form.get("password")
+        consultation = request.form.get("consultation")
+        date_of_consultation = request.form.get("date_of_consultation")
+
+        # Input validation
+        if not email or not password or not consultation or not date_of_consultation:
+            return jsonify({"error": "All fields are required"}), 400
+
+        # Connect to the database
         conn = sqlite3.connect('users.db')
         c = conn.cursor()
 
-        # Retrieve the stored hashed password
+        # Use parameterized query to prevent SQL injection
         c.execute('SELECT password FROM users WHERE email = ?', (email,))
         user = c.fetchone()
 
-        # Close the database connection
-        conn.close()
+        if not user:
+            return jsonify({"error": "Incorrect email or password"}), 401
 
-        # Check if user exists and passwords match
-        if user and bcrypt.checkpw(password.encode('utf-8'), user[0].encode('utf-8')):
-            # Here, you could process the consultation (store it in a database, etc.)
-            return "Login successful! Consultation booked for {}".format(date_of_consultation)
+        # Verify hashed password
+        if bcrypt.checkpw(password.encode('utf-8'), user[0].encode('utf-8')):
+            # Store consultation in database
+            c.execute('INSERT INTO consultations (email, consultation, date_of_consultation) VALUES (?, ?, ?)', 
+                      (email, consultation, date_of_consultation))
+            conn.commit()
+
+            return jsonify({"message": f"Login successful! Consultation booked for {date_of_consultation}"}), 200
         else:
-            return "Incorrect email or password. Please try again.", 401  # Unauthorized
+            return jsonify({"error": "Incorrect email or password"}), 401
 
     except sqlite3.Error as e:
-        # Log the database error for debugging (in a real app, use logging instead of print)
-        print(f"Database error: {e}")
-        return "An error occurred. Please try again later.", 500  # Internal Server Error
+        logging.error(f"Database error: {e}")
+        return jsonify({"error": "An error occurred. Please try again later"}), 500
 
     except Exception as e:
-        # Catch all other exceptions
-        print(f"Unexpected error: {e}")
-        return "An unexpected error occurred. Please try again later.", 500
+        logging.error(f"Unexpected error: {e}")
+        return jsonify({"error": "An unexpected error occurred. Please try again later"}), 500
+
+    finally:
+        # Ensure the database connection is closed
+        if 'conn' in locals():
+            conn.close()
 
 
 
 
 
+
+        
 
 
 
