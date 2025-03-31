@@ -394,3 +394,89 @@ def calculate_carbon_footprint():
 calculate_carbon_footprint()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@app.route("/consultations", methods=["POST"])
+def cons():
+    email = request.form.get("email")
+    password = request.form.get("password")
+    consultation = request.form.get("consultation")
+    date_of_consultation = request.form.get("date_of_consultation")
+
+    # Validate input fields
+    if not (email and password and consultation and date_of_consultation):
+        return "All fields are required!", 400  # Bad Request
+
+    try:
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+
+        # Retrieve the stored hashed password
+        c.execute('SELECT password FROM users WHERE email = ?', (email,))
+        user = c.fetchone()
+
+        # Close the database connection
+        conn.close()
+
+        # Check if user exists and passwords match
+        if user and bcrypt.checkpw(password.encode('utf-8'), user[0].encode('utf-8')):
+            # Here, you could process the consultation (store it in a database, etc.)
+            return "Login successful! Consultation booked for {}".format(date_of_consultation)
+        else:
+            return "Incorrect email or password. Please try again.", 401  # Unauthorized
+
+    except sqlite3.Error as e:
+        # Log the database error for debugging (in a real app, use logging instead of print)
+        print(f"Database error: {e}")
+        return "An error occurred. Please try again later.", 500  # Internal Server Error
+
+    except Exception as e:
+        # Catch all other exceptions
+        print(f"Unexpected error: {e}")
+        return "An unexpected error occurred. Please try again later.", 500
+
+
+
+
+
+
+
+
+
+return render_template('installationconfirmation.html', email=email, installation=installation, date_of_installation=date_of_installation)
+
